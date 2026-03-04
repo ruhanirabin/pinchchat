@@ -78,15 +78,16 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
   } = useTheme();
   const { sendOnEnter, toggle: toggleSendShortcut } = useSendShortcut();
   const currentLocale = useLocale();
-  const [tab, setTab] = useState<'appearance' | 'typography' | 'chat' | 'notifications'>('appearance');
+  type TabId = 'appearance' | 'typography' | 'chat' | 'notifications';
+  const [tab, setTab] = useState<TabId>('appearance');
 
   const tabs = useMemo(() => {
-    const base = [
-      { id: 'appearance' as const, label: t('settings.tab.appearance') },
-      { id: 'typography' as const, label: t('settings.tab.typography') },
-      { id: 'chat' as const, label: t('settings.tab.chat') },
+    const base: { id: TabId; label: string }[] = [
+      { id: 'appearance', label: t('settings.tab.appearance') },
+      { id: 'typography', label: t('settings.tab.typography') },
+      { id: 'chat', label: t('settings.tab.chat') },
     ];
-    if (onToggleSound) base.push({ id: 'notifications' as const, label: t('settings.tab.notifications') });
+    if (onToggleSound) base.push({ id: 'notifications', label: t('settings.tab.notifications') });
     return base;
   }, [onToggleSound, t]);
 
