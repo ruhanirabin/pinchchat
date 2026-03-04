@@ -183,6 +183,8 @@ const en = {
   'settings.fontSize': 'UI font size',
   'settings.fontMonoSize': 'Code font size',
   'settings.preview': 'Preview',
+  'settings.previewText': 'The quick brown fox jumps over the lazy dog — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira load automatically; Cascadia and SF use your system if installed.',
 
   // Bookmarks
   'message.bookmark': 'Bookmark message',
@@ -364,6 +366,8 @@ const fr: Record<keyof typeof en, string> = {
   'settings.fontSize': 'Taille police UI',
   'settings.fontMonoSize': 'Taille police code',
   'settings.preview': 'Aperçu',
+  'settings.previewText': 'Le vif renard brun saute par-dessus le chien paresseux — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira se chargent automatiquement ; Cascadia et SF dépendent des polices installées.',
 
   'message.bookmark': 'Marquer le message',
   'message.removeBookmark': 'Retirer le marque-page',
@@ -544,6 +548,8 @@ const es: Record<keyof typeof en, string> = {
   'settings.fontSize': 'Tamaño fuente UI',
   'settings.fontMonoSize': 'Tamaño fuente código',
   'settings.preview': 'Vista previa',
+  'settings.previewText': 'El veloz zorro marrón salta sobre el perro perezoso — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira se cargan automáticamente; Cascadia y SF dependen de que estén instaladas.',
 
   'message.bookmark': 'Marcar mensaje',
   'message.removeBookmark': 'Quitar marcador',
@@ -726,6 +732,8 @@ const de: Record<keyof typeof en, string> = {
   'settings.fontSize': 'UI-Schriftgröße',
   'settings.fontMonoSize': 'Code-Schriftgröße',
   'settings.preview': 'Vorschau',
+  'settings.previewText': 'Falsches Üben von Xylophonmusik quält jeden größeren Zwerg — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira werden automatisch geladen; Cascadia und SF erfordern Systeminstallation.',
 
   'message.bookmark': 'Nachricht markieren',
   'message.reply': 'Antworten',
@@ -906,6 +914,8 @@ const ja: Record<keyof typeof en, string> = {
   'settings.fontSize': 'UIフォントサイズ',
   'settings.fontMonoSize': 'コードフォントサイズ',
   'settings.preview': 'プレビュー',
+  'settings.previewText': '素早い茶色の狐はのんびり犬を飛び越える — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira は自動読み込み。Cascadia と SF はシステムにある場合のみ使用。',
 
   'message.bookmark': 'メッセージをブックマーク',
   'message.reply': '返信',
@@ -1086,6 +1096,8 @@ const pt: Record<keyof typeof en, string> = {
   'settings.fontSize': 'Tamanho da fonte UI',
   'settings.fontMonoSize': 'Tamanho da fonte de código',
   'settings.preview': 'Pré-visualização',
+  'settings.previewText': 'A rápida raposa marrom pula sobre o cão preguiçoso — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira carregam automaticamente; Cascadia e SF dependem de estarem instaladas.',
 
   'message.bookmark': 'Marcar mensagem',
   'message.reply': 'Responder',
@@ -1266,6 +1278,8 @@ const zh: Record<keyof typeof en, string> = {
   'settings.fontSize': '界面字号',
   'settings.fontMonoSize': '代码字号',
   'settings.preview': '预览',
+  'settings.previewText': '敏捷的棕狐跳过懒狗 — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira 自动加载；Cascadia 和 SF 依赖系统已安装字体。',
 
   'message.bookmark': '收藏消息',
   'message.reply': '回复',
@@ -1446,6 +1460,8 @@ const it: Record<keyof typeof en, string> = {
   'settings.fontSize': 'Dimensione font UI',
   'settings.fontMonoSize': 'Dimensione font codice',
   'settings.preview': 'Anteprima',
+  'settings.previewText': 'Quel vitello jazz fonde sciolto whiskey e cioccolato — 1234567890',
+  'settings.fontNote': 'Inter / JetBrains / Fira si caricano automaticamente; Cascadia e SF richiedono font di sistema.',
 
   'message.bookmark': 'Aggiungi ai segnalibri',
   'message.reply': 'Rispondi',

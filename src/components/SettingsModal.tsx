@@ -5,6 +5,7 @@ import { useSendShortcut } from '../hooks/useSendShortcut';
 import { useT, useLocale } from '../hooks/useLocale';
 import { setLocale, supportedLocales, localeLabels } from '../lib/i18n';
 import type { ThemeName, AccentColor, UiFont, MonoFont } from '../contexts/ThemeContextDef';
+import { uiFontStacks, monoFontStacks } from '../contexts/ThemeContextDef';
 import type { TranslationKey } from '../lib/i18n';
 
 const themeOptions: { value: ThemeName; icon: typeof Sun; labelKey: TranslationKey }[] = [
@@ -91,20 +92,6 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
     return base;
   }, [onToggleSound, t]);
 
-  const uiFontStacks: Record<UiFont, string> = {
-    system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-    inter: "'Inter', 'Segoe UI', system-ui, sans-serif",
-    segoe: "'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
-    sf: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
-  };
-
-  const monoFontStacks: Record<MonoFont, string> = {
-    jetbrains: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-    fira: "'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-    cascadia: "'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-    'system-mono': "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  };
-
   const uiFontOptions: { value: UiFont; label: string; sample: string }[] = [
     { value: 'system', label: 'System', sample: 'Segoe/UI' },
     { value: 'inter', label: 'Inter', sample: 'Inter' },
@@ -146,7 +133,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-md mx-4 rounded-3xl border border-pc-border bg-[var(--pc-bg-base)]/95 backdrop-blur-xl shadow-2xl animate-fade-in"
+        className="relative w-full max-w-xl mx-4 rounded-3xl border border-pc-border bg-[var(--pc-bg-base)]/95 backdrop-blur-xl shadow-2xl animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -308,6 +295,8 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                 </div>
               </div>
 
+              <div className="text-[11px] text-pc-text-faint mb-4 text-center">{t('settings.fontNote')}</div>
+
               <div className="mb-4">
                 <div className="text-xs text-pc-text-secondary mb-2">{t('settings.fontSize')}</div>
                 <div className="flex gap-1.5 flex-wrap">
@@ -351,11 +340,12 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
               <div className="rounded-2xl border border-pc-border bg-[var(--pc-bg-surface)]/70 p-3">
                 <div className="text-[11px] uppercase tracking-wide text-pc-text-faint mb-2">{t('settings.preview')}</div>
                 <div className="text-sm text-pc-text mb-2" style={{ fontFamily: 'var(--pc-font-ui)', fontSize: 'var(--pc-font-size)' }}>
-                  The quick brown fox jumps over the lazy dog — 1234567890
+                  {t('settings.previewText')}
                 </div>
                 <div className="rounded-xl border border-dashed border-pc-border p-2 bg-[var(--pc-bg-code)] text-[13px]" style={{ fontFamily: 'var(--pc-font-mono)', fontSize: 'var(--pc-font-size-mono)' }}>
                   const hello = 'PinchChat'; // typography preview
                 </div>
+                <div className="text-[11px] text-pc-text-faint mt-2 text-center">{t('settings.fontNote')}</div>
               </div>
             </>
           )}
