@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loadStored, STORAGE_KEY } from '../themeStorage';
 
-const STORAGE_KEY = 'pinchchat-theme';
 
 describe('ThemeContext loadStoredForTest', () => {
   beforeEach(() => {
