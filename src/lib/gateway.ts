@@ -137,7 +137,7 @@ export class GatewayClient {
         role,
         scopes,
         signedAtMs,
-        token: this.authToken || null,
+        token: this.authMode === 'password' ? null : (this.authToken || null),
         nonce,
       });
       const signature = await signPayload(this.deviceIdentity.keyPair.privateKey, payload);
