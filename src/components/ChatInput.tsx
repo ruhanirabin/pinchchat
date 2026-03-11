@@ -38,19 +38,6 @@ interface Props {
 const MAX_BASE64_CHARS = 300 * 1024; // ~225KB real, well under 512KB WS limit (JSON overhead + base64 bloat)
 const MAX_IMAGE_PIXELS = 1280; // Max dimension for resize
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(',')[1] || '';
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 function compressImage(file: File, maxBase64Chars: number): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -184,24 +171,18 @@ export function ChatInput({ onSend, onNewSession, onAbort, isGenerating, disable
     const newFiles: FileAttachment[] = [];
     for (const file of Array.from(fileList)) {
       if (file.size > 20 * 1024 * 1024) continue; // 20MB max
-      const isImage = file.type.startsWith('image/');
-      let base64: string;
-      let mimeType: string;
-      if (isImage) {
-        // Compress images to fit WS payload limit
-        const compressed = await compressImage(file, MAX_BASE64_CHARS);
-        base64 = compressed.base64;
-        mimeType = compressed.mimeType;
-      } else {
-        base64 = await fileToBase64(file);
-        mimeType = file.type || 'application/octet-stream';
-      }
+      // Only images are supported — the OpenClaw gateway drops non-image attachments
+      if (!file.type.startsWith('image/')) continue;
+      // Compress images to fit WS payload limit
+      const compressed = await compressImage(file, MAX_BASE64_CHARS);
+      const base64 = compressed.base64;
+      const mimeType = compressed.mimeType;
       newFiles.push({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         file,
         base64,
         mimeType,
-        preview: isImage ? `data:${mimeType};base64,${base64}` : undefined,
+        preview: `data:${mimeType};base64,${base64}`,
       });
     }
     setFiles(prev => [...prev, ...newFiles]);
@@ -418,7 +399,7 @@ export function ChatInput({ onSend, onNewSession, onAbort, isGenerating, disable
               multiple
               className="hidden"
               onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }}
-              accept="image/*,.pdf,.txt,.md,.json,.csv,.log,.py,.js,.ts,.tsx,.jsx,.html,.css,.yaml,.yml,.xml,.sql,.sh,.env,.toml"
+              accept="image/*"
             />
 
             <textarea
