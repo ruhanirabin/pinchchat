@@ -1,9 +1,9 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { X, Search, Pin, Trash2, Columns2, Clock, Bot, MessageSquare, Globe, Zap, ArrowUpCircle, Download, Pencil } from 'lucide-react';
+import { X, Search, Pin, Trash2, Columns2, Clock, Bot, MessageSquare, Globe, Zap, ArrowUpCircle, Download, Pencil, Plus, ChevronDown } from 'lucide-react';
 import type { Session } from '../types';
 import { useT } from '../hooks/useLocale';
 import { SessionIcon } from './SessionIcon';
-import { sessionDisplayName } from '../lib/sessionName';
+import { sessionDisplayName, extractAgentIdFromKey } from '../lib/sessionName';
 import { relativeTime } from '../lib/relativeTime';
 import { useUpdateCheck } from '../hooks/useUpdateCheck';
 import { usePwaInstall } from '../hooks/usePwaInstall';
@@ -66,6 +66,7 @@ const PINNED_KEY = 'pinchchat-pinned-sessions';
 const WIDTH_KEY = 'pinchchat-sidebar-width';
 const ORDER_KEY = 'pinchchat-session-order';
 const FILTER_KEY = 'pinchchat-session-filter';
+const AGENT_FILTER_KEY = 'pinchchat-session-agent-filter';
 const NAMES_KEY = 'pinchchat-session-names';
 
 function getCustomNames(): Record<string, string> {
@@ -159,6 +160,80 @@ function saveOrder(order: string[]) {
   } catch { /* noop */ }
 }
 
+function NewSessionSplitButton({ onNewSession, onNewSessionForAgent, sessions }: {
+  onNewSession: () => Promise<void>;
+  onNewSessionForAgent: (agentId: string) => Promise<void>;
+  sessions: Session[];
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const agentIds = useMemo(() => {
+    const ids = new Set<string>();
+    sessions.forEach(s => {
+      const id = s.agentId || extractAgentIdFromKey(s.key);
+      if (id) ids.add(id);
+    });
+    return Array.from(ids).sort();
+  }, [sessions]);
+
+  const showDropdown = agentIds.length >= 2;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative flex items-center" ref={wrapperRef}>
+      <button
+        onClick={() => { void onNewSession(); }}
+        className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-pc-text-secondary hover:text-pc-text hover:bg-[var(--pc-hover)] border border-pc-border bg-pc-elevated/30 transition-colors ${showDropdown ? 'rounded-l-xl border-r-0' : 'rounded-xl'}`}
+        title={t('sidebar.newSession')}
+        aria-label={t('sidebar.newSession')}
+      >
+        <Plus size={13} />
+        <span>New</span>
+      </button>
+      {showDropdown && (
+        <button
+          onClick={() => setOpen(v => !v)}
+          className={`flex items-center px-1.5 py-1.5 text-xs text-pc-text-secondary hover:text-pc-text hover:bg-[var(--pc-hover)] border border-pc-border bg-pc-elevated/30 rounded-r-xl transition-colors ${open ? 'bg-[var(--pc-hover)] text-pc-text' : ''}`}
+          title={t('sidebar.selectAgent')}
+          aria-label={t('sidebar.selectAgent')}
+          aria-expanded={open}
+        >
+          <ChevronDown size={12} className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+      {open && showDropdown && (
+        <div className="absolute top-full right-0 mt-1.5 min-w-[150px] rounded-xl border border-pc-border bg-[var(--pc-bg-surface)] shadow-xl z-50 backdrop-blur-xl overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] text-pc-text-muted border-b border-pc-border font-medium uppercase tracking-wider">
+            {t('sidebar.selectAgent')}
+          </div>
+          {agentIds.map(id => (
+            <button
+              key={id}
+              onClick={() => { void onNewSessionForAgent(id); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-pc-text-secondary hover:bg-[var(--pc-hover)] hover:text-pc-text transition-colors"
+            >
+              <Bot size={12} className="shrink-0 text-pc-accent-light/70" />
+              <span className="font-mono truncate">{id}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   sessions: Session[];
   activeSession: string;
@@ -169,9 +244,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onRename?: (key: string, label: string) => Promise<boolean>;
+  onNewSession?: () => Promise<void>;
+  onNewSessionForAgent?: (agentId: string) => Promise<void>;
 }
 
-export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, splitSession, open, onClose, onRename }: Props) {
+export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, splitSession, open, onClose, onRename, onNewSession, onNewSessionForAgent }: Props) {
   const t = useT();
   const [filter, setFilter] = useState('');
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -182,6 +259,9 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
   const [customOrder, setCustomOrder] = useState<string[]>(getSavedOrder);
   const [channelFilter, setChannelFilter] = useState<string | null>(() => {
     try { return localStorage.getItem(FILTER_KEY); } catch { return null; }
+  });
+  const [agentFilter, setAgentFilter] = useState<string | null>(() => {
+    try { return localStorage.getItem(AGENT_FILTER_KEY); } catch { return null; }
   });
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -302,6 +382,26 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
 
   const availableCategories = useMemo(() => getAvailableCategories(sessions), [sessions]);
 
+  const availableAgentIds = useMemo(() => {
+    const ids = new Set<string>();
+    sessions.forEach(s => {
+      const id = s.agentId || extractAgentIdFromKey(s.key);
+      if (id) ids.add(id);
+    });
+    return Array.from(ids).sort();
+  }, [sessions]);
+
+  const toggleAgentFilter = useCallback((id: string) => {
+    setAgentFilter(prev => {
+      const next = prev === id ? null : id;
+      try {
+        if (next) localStorage.setItem(AGENT_FILTER_KEY, next);
+        else localStorage.removeItem(AGENT_FILTER_KEY);
+      } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
   const toggleChannelFilter = useCallback((cat: string) => {
     setChannelFilter(prev => {
       const next = prev === cat ? null : cat;
@@ -320,6 +420,12 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
       list = list.filter(s => s.isActive);
     } else if (channelFilter) {
       list = list.filter(s => sessionCategory(s) === channelFilter);
+    }
+    if (agentFilter) {
+      list = list.filter(s => {
+        const id = s.agentId || extractAgentIdFromKey(s.key);
+        return id === agentFilter;
+      });
     }
     if (filter.trim()) {
       const q = filter.toLowerCase();
@@ -341,25 +447,34 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
     pinnedList.sort(byCustomThenRecent);
     unpinnedList.sort(byCustomThenRecent);
     return [...pinnedList, ...unpinnedList];
-  }, [sessions, filter, pinned, customOrder, channelFilter, customNames]);
+  }, [sessions, filter, pinned, customOrder, channelFilter, agentFilter, customNames]);
 
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }} role="button" tabIndex={-1} aria-label="Close sidebar" />}
       <aside role="navigation" aria-label="Sessions" className={`fixed lg:relative top-0 left-0 h-full bg-[var(--pc-bg-base)]/95 border-r border-pc-border z-50 transform ${dragging ? '' : 'transition-transform'} lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col backdrop-blur-xl`} style={{ width: `${width}px` }}>
-        <div className="h-14 flex items-center justify-between px-4 border-b border-pc-border">
-          <div className="flex items-center gap-2">
-            <div className="relative">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-pc-border gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="relative shrink-0">
               <div className="absolute -inset-1.5 rounded-xl bg-gradient-to-r from-cyan-400/15 to-violet-500/15 blur-lg" />
               <div className="relative flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden">
                 <img src="/logo.png" alt="PinchChat" className="h-8 w-8 object-contain" />
               </div>
             </div>
-            <span className="font-semibold text-sm text-pc-text tracking-wide">{t('sidebar.title')}</span>
+            <span className="font-semibold text-sm text-pc-text tracking-wide truncate">{t('sidebar.title')}</span>
           </div>
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded-xl hover:bg-[var(--pc-hover)] text-pc-text-secondary transition-colors" aria-label={t('sidebar.close')}>
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onNewSession && onNewSessionForAgent && (
+              <NewSessionSplitButton
+                onNewSession={onNewSession}
+                onNewSessionForAgent={onNewSessionForAgent}
+                sessions={sessions}
+              />
+            )}
+            <button onClick={onClose} className="lg:hidden p-1.5 rounded-xl hover:bg-[var(--pc-hover)] text-pc-text-secondary transition-colors" aria-label={t('sidebar.close')}>
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Session search */}
@@ -389,44 +504,81 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
           </div>
         )}
 
-        {/* Channel filter chips */}
-        {availableCategories.length > 1 && (
-          <div className="px-2 pt-1.5 flex flex-wrap gap-1">
-            <button
-              onClick={() => { setChannelFilter(null); try { localStorage.removeItem(FILTER_KEY); } catch { /* noop */ } }}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
-                !channelFilter
-                  ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
-                  : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
-              }`}
-            >
-              {t('sidebar.filterAll')}
-            </button>
-            <button
-              onClick={() => toggleChannelFilter('active')}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
-                channelFilter === 'active'
-                  ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
-                  : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
-              }`}
-            >
-              <Zap size={10} />
-              {t('sidebar.filterActive')}
-            </button>
-            {availableCategories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => toggleChannelFilter(cat)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
-                  channelFilter === cat
-                    ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
-                    : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
-                }`}
-              >
-                <FilterChipIcon cat={cat} size={10} />
-                {categoryLabel(cat)}
-              </button>
-            ))}
+        {/* Filter chips */}
+        {(availableCategories.length > 1 || availableAgentIds.length >= 2) && (
+          <div className="px-2 pt-2 pb-1 flex flex-col gap-2">
+            {availableCategories.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => { setChannelFilter(null); try { localStorage.removeItem(FILTER_KEY); } catch { /* noop */ } }}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
+                    !channelFilter
+                      ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
+                      : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
+                  }`}
+                >
+                  {t('sidebar.filterAll')}
+                </button>
+                <button
+                  onClick={() => toggleChannelFilter('active')}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
+                    channelFilter === 'active'
+                      ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
+                      : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
+                  }`}
+                >
+                  <Zap size={10} />
+                  {t('sidebar.filterActive')}
+                </button>
+                {availableCategories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => toggleChannelFilter(cat)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
+                      channelFilter === cat
+                        ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
+                        : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
+                    }`}
+                  >
+                    <FilterChipIcon cat={cat} size={10} />
+                    {categoryLabel(cat)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {availableCategories.length > 1 && availableAgentIds.length >= 2 && (
+              <div className="h-px bg-pc-border/50" />
+            )}
+
+            {availableAgentIds.length >= 2 && (
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => { setAgentFilter(null); try { localStorage.removeItem(AGENT_FILTER_KEY); } catch { /* noop */ } }}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
+                    !agentFilter
+                      ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
+                      : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
+                  }`}
+                >
+                  {t('sidebar.filterAllAgents')}
+                </button>
+                {availableAgentIds.map(id => (
+                  <button
+                    key={id}
+                    onClick={() => toggleAgentFilter(id)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border ${
+                      agentFilter === id
+                        ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
+                        : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
+                    }`}
+                  >
+                    <Bot size={10} className="shrink-0" />
+                    <span className="font-mono">{id}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -460,7 +612,24 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
           }}
         >
           {sessions.length === 0 && (
-            <div className="px-3 py-8 text-center text-pc-text-muted text-sm">{t('sidebar.empty')}</div>
+            <div className="flex flex-col items-center justify-center px-4 py-10 gap-3 text-center">
+              <div className="h-10 w-10 rounded-2xl bg-[var(--pc-hover)] flex items-center justify-center text-pc-text-muted">
+                <MessageSquare size={20} />
+              </div>
+              <div>
+                <p className="text-sm text-pc-text-secondary font-medium">{t('sidebar.emptyTitle')}</p>
+                <p className="text-xs text-pc-text-muted mt-0.5">{t('sidebar.emptySubtitle')}</p>
+              </div>
+              {onNewSession && (
+                <button
+                  onClick={() => { void onNewSession(); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--pc-accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity shadow-[0_4px_12px_rgba(var(--pc-accent-rgb),0.2)]"
+                >
+                  <Plus size={14} />
+                  {t('sidebar.newSession')}
+                </button>
+              )}
+            </div>
           )}
           {sessions.length > 0 && filtered.length === 0 && (
             <div className="px-3 py-6 text-center text-pc-text-muted text-xs">{t('sidebar.noResults')}</div>
