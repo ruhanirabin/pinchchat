@@ -7,6 +7,14 @@ import { sessionDisplayName, extractAgentIdFromKey } from '../lib/sessionName';
 import { relativeTime } from '../lib/relativeTime';
 import { useUpdateCheck } from '../hooks/useUpdateCheck';
 import { usePwaInstall } from '../hooks/usePwaInstall';
+import {
+  FILTER_KEY, AGENT_FILTER_KEY,
+  MIN_WIDTH, MAX_WIDTH, WIDTH_KEY,
+  getCustomNames, saveCustomNames,
+  sessionCategory, getAvailableCategories, categoryLabel,
+  getSavedWidth, getPinnedSessions, savePinnedSessions,
+  getSavedOrder, saveOrder,
+} from '../lib/sidebarStorage';
 
 function VersionBadge() {
   const update = useUpdateCheck(__APP_VERSION__);
@@ -62,43 +70,6 @@ function SidebarFooter() {
   );
 }
 
-const PINNED_KEY = 'pinchchat-pinned-sessions';
-const WIDTH_KEY = 'pinchchat-sidebar-width';
-const ORDER_KEY = 'pinchchat-session-order';
-const FILTER_KEY = 'pinchchat-session-filter';
-const AGENT_FILTER_KEY = 'pinchchat-session-agent-filter';
-const NAMES_KEY = 'pinchchat-session-names';
-
-function getCustomNames(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(NAMES_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, string>;
-  } catch { /* noop */ }
-  return {};
-}
-
-function saveCustomNames(names: Record<string, string>) {
-  try {
-    localStorage.setItem(NAMES_KEY, JSON.stringify(names));
-  } catch { /* noop */ }
-}
-
-/** Detect the category of a session for filtering */
-function sessionCategory(s: Session): string {
-  if (s.key.includes(':cron:')) return 'cron';
-  if (s.key.includes(':spawn:') || s.key.includes(':sub:')) return 'agent';
-  const ch = s.channel?.toLowerCase();
-  if (ch && ch !== 'webchat') return ch;
-  return 'other';
-}
-
-/** Get unique categories present in sessions */
-function getAvailableCategories(sessions: Session[]): string[] {
-  const cats = new Set<string>();
-  for (const s of sessions) cats.add(sessionCategory(s));
-  return Array.from(cats).sort();
-}
-
 /** Icons for filter chips */
 function FilterChipIcon({ cat, size = 12 }: { cat: string; size?: number }) {
   switch (cat) {
@@ -108,56 +79,6 @@ function FilterChipIcon({ cat, size = 12 }: { cat: string; size?: number }) {
     case 'telegram': return <MessageSquare size={size} />;
     default: return <Globe size={size} />;
   }
-}
-
-/** Pretty label for category */
-function categoryLabel(cat: string): string {
-  if (cat === 'cron') return 'Cron';
-  if (cat === 'agent') return 'Agents';
-  if (cat === 'other') return 'Chat';
-  return cat.charAt(0).toUpperCase() + cat.slice(1);
-}
-const MIN_WIDTH = 220;
-const MAX_WIDTH = 480;
-const DEFAULT_WIDTH = 288; // w-72
-
-function getSavedWidth(): number {
-  try {
-    const v = localStorage.getItem(WIDTH_KEY);
-    if (v) {
-      const n = Number(v);
-      if (n >= MIN_WIDTH && n <= MAX_WIDTH) return n;
-    }
-  } catch { /* noop */ }
-  return DEFAULT_WIDTH;
-}
-
-function getPinnedSessions(): Set<string> {
-  try {
-    const raw = localStorage.getItem(PINNED_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch { /* noop */ }
-  return new Set();
-}
-
-function savePinnedSessions(pinned: Set<string>) {
-  try {
-    localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned]));
-  } catch { /* noop */ }
-}
-
-function getSavedOrder(): string[] {
-  try {
-    const raw = localStorage.getItem(ORDER_KEY);
-    if (raw) return JSON.parse(raw) as string[];
-  } catch { /* noop */ }
-  return [];
-}
-
-function saveOrder(order: string[]) {
-  try {
-    localStorage.setItem(ORDER_KEY, JSON.stringify(order));
-  } catch { /* noop */ }
 }
 
 function NewSessionSplitButton({ onNewSession, onNewSessionForAgent, sessions }: {
