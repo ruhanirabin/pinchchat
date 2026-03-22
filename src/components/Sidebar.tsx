@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { X, Search, Pin, Trash2, Columns2, Clock, Bot, MessageSquare, Globe, Zap, ArrowUpCircle, Download, Pencil, Plus, ChevronDown } from 'lucide-react';
+import { X, Search, Pin, Trash2, Columns2, Clock, Bot, MessageSquare, Globe, Zap, ArrowUpCircle, Download, Pencil, Link, Plus, ChevronDown } from 'lucide-react';
 import type { Session } from '../types';
 import { useT } from '../hooks/useLocale';
 import { SessionIcon } from './SessionIcon';
@@ -7,6 +7,15 @@ import { sessionDisplayName, extractAgentIdFromKey } from '../lib/sessionName';
 import { relativeTime } from '../lib/relativeTime';
 import { useUpdateCheck } from '../hooks/useUpdateCheck';
 import { usePwaInstall } from '../hooks/usePwaInstall';
+import {
+  FILTER_KEY, AGENT_FILTER_KEY,
+  MIN_WIDTH, MAX_WIDTH, WIDTH_KEY,
+  getCustomNames, saveCustomNames,
+  sessionCategory, getAvailableCategories, categoryLabel,
+  getSavedWidth, getPinnedSessions, savePinnedSessions,
+  getSavedOrder, saveOrder,
+} from '../lib/sidebarStorage';
+import { copyToClipboard } from '../lib/clipboard';
 
 function VersionBadge() {
   const update = useUpdateCheck(__APP_VERSION__);
@@ -62,43 +71,6 @@ function SidebarFooter() {
   );
 }
 
-const PINNED_KEY = 'pinchchat-pinned-sessions';
-const WIDTH_KEY = 'pinchchat-sidebar-width';
-const ORDER_KEY = 'pinchchat-session-order';
-const FILTER_KEY = 'pinchchat-session-filter';
-const AGENT_FILTER_KEY = 'pinchchat-session-agent-filter';
-const NAMES_KEY = 'pinchchat-session-names';
-
-function getCustomNames(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(NAMES_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, string>;
-  } catch { /* noop */ }
-  return {};
-}
-
-function saveCustomNames(names: Record<string, string>) {
-  try {
-    localStorage.setItem(NAMES_KEY, JSON.stringify(names));
-  } catch { /* noop */ }
-}
-
-/** Detect the category of a session for filtering */
-function sessionCategory(s: Session): string {
-  if (s.key.includes(':cron:')) return 'cron';
-  if (s.key.includes(':spawn:') || s.key.includes(':sub:')) return 'agent';
-  const ch = s.channel?.toLowerCase();
-  if (ch && ch !== 'webchat') return ch;
-  return 'other';
-}
-
-/** Get unique categories present in sessions */
-function getAvailableCategories(sessions: Session[]): string[] {
-  const cats = new Set<string>();
-  for (const s of sessions) cats.add(sessionCategory(s));
-  return Array.from(cats).sort();
-}
-
 /** Icons for filter chips */
 function FilterChipIcon({ cat, size = 12 }: { cat: string; size?: number }) {
   switch (cat) {
@@ -108,56 +80,6 @@ function FilterChipIcon({ cat, size = 12 }: { cat: string; size?: number }) {
     case 'telegram': return <MessageSquare size={size} />;
     default: return <Globe size={size} />;
   }
-}
-
-/** Pretty label for category */
-function categoryLabel(cat: string): string {
-  if (cat === 'cron') return 'Cron';
-  if (cat === 'agent') return 'Agents';
-  if (cat === 'other') return 'Chat';
-  return cat.charAt(0).toUpperCase() + cat.slice(1);
-}
-const MIN_WIDTH = 220;
-const MAX_WIDTH = 480;
-const DEFAULT_WIDTH = 288; // w-72
-
-function getSavedWidth(): number {
-  try {
-    const v = localStorage.getItem(WIDTH_KEY);
-    if (v) {
-      const n = Number(v);
-      if (n >= MIN_WIDTH && n <= MAX_WIDTH) return n;
-    }
-  } catch { /* noop */ }
-  return DEFAULT_WIDTH;
-}
-
-function getPinnedSessions(): Set<string> {
-  try {
-    const raw = localStorage.getItem(PINNED_KEY);
-    if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch { /* noop */ }
-  return new Set();
-}
-
-function savePinnedSessions(pinned: Set<string>) {
-  try {
-    localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned]));
-  } catch { /* noop */ }
-}
-
-function getSavedOrder(): string[] {
-  try {
-    const raw = localStorage.getItem(ORDER_KEY);
-    if (raw) return JSON.parse(raw) as string[];
-  } catch { /* noop */ }
-  return [];
-}
-
-function saveOrder(order: string[]) {
-  try {
-    localStorage.setItem(ORDER_KEY, JSON.stringify(order));
-  } catch { /* noop */ }
 }
 
 function NewSessionSplitButton({ onNewSession, onNewSessionForAgent, sessions }: {
@@ -223,6 +145,7 @@ function NewSessionSplitButton({ onNewSession, onNewSessionForAgent, sessions }:
               key={id}
               onClick={() => { void onNewSessionForAgent(id); setOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-pc-text-secondary hover:bg-[var(--pc-hover)] hover:text-pc-text transition-colors"
+              aria-label={`${t('sidebar.newSession')} ${id}`}
             >
               <Bot size={12} className="shrink-0 text-pc-accent-light/70" />
               <span className="font-mono truncate">{id}</span>
@@ -246,9 +169,10 @@ interface Props {
   onRename?: (key: string, label: string) => Promise<boolean>;
   onNewSession?: () => Promise<void>;
   onNewSessionForAgent?: (agentId: string) => Promise<void>;
+  onToast?: (opts: { message: string; type: 'success' | 'warning' }) => void;
 }
 
-export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, splitSession, open, onClose, onRename, onNewSession, onNewSessionForAgent }: Props) {
+export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, splitSession, open, onClose, onRename, onNewSession, onNewSessionForAgent, onToast }: Props) {
   const t = useT();
   const [filter, setFilter] = useState('');
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -516,6 +440,8 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                       ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
                       : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
                   }`}
+                  aria-label={t('sidebar.filterAll')}
+                  aria-pressed={!channelFilter}
                 >
                   {t('sidebar.filterAll')}
                 </button>
@@ -526,6 +452,8 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                       ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
                       : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
                   }`}
+                  aria-label={t('sidebar.filterActive')}
+                  aria-pressed={channelFilter === 'active'}
                 >
                   <Zap size={10} />
                   {t('sidebar.filterActive')}
@@ -539,6 +467,8 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                         ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
                         : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
                     }`}
+                    aria-label={categoryLabel(cat)}
+                    aria-pressed={channelFilter === cat}
                   >
                     <FilterChipIcon cat={cat} size={10} />
                     {categoryLabel(cat)}
@@ -560,6 +490,8 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                       ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
                       : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
                   }`}
+                  aria-label={t('sidebar.filterAllAgents')}
+                  aria-pressed={!agentFilter}
                 >
                   {t('sidebar.filterAllAgents')}
                 </button>
@@ -572,6 +504,8 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                         ? 'bg-[var(--pc-accent-glow)] text-pc-accent-light border-[var(--pc-accent-dim)]'
                         : 'bg-transparent text-pc-text-muted border-pc-border hover:bg-[var(--pc-hover)] hover:text-pc-text-secondary'
                     }`}
+                    aria-label={`Filter agent: ${id}`}
+                    aria-pressed={agentFilter === id}
                   >
                     <Bot size={10} className="shrink-0" />
                     <span className="font-mono">{id}</span>
@@ -624,6 +558,7 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                 <button
                   onClick={() => { void onNewSession(); }}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--pc-accent)] text-white text-xs font-medium hover:opacity-90 transition-opacity shadow-[0_4px_12px_rgba(var(--pc-accent-rgb),0.2)]"
+                  aria-label={t('sidebar.newSession')}
                 >
                   <Plus size={14} />
                   {t('sidebar.newSession')}
@@ -755,6 +690,25 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
                       >
                         <Pin size={12} className={isPinned ? 'fill-current' : ''} />
                       </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const params = new URLSearchParams(window.location.search);
+                          params.set('session', s.key);
+                          const url = window.location.origin + window.location.pathname + '?' + params.toString();
+                          const ok = await copyToClipboard(url);
+                          if (ok) {
+                            onToast?.({ message: t('session.linkCopied'), type: 'success' });
+                          } else {
+                            onToast?.({ message: t('session.copyLinkFailed'), type: 'warning' });
+                          }
+                        }}
+                        className="shrink-0 p-0.5 rounded-lg transition-all text-pc-text-faint opacity-0 group-hover/item:opacity-60 hover:!opacity-100 hover:text-pc-text-secondary"
+                        title={t('sidebar.copyLink')}
+                        aria-label={t('sidebar.copyLink')}
+                      >
+                        <Link size={12} />
+                      </button>
                       {onSplit && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSplit(s.key); }}
@@ -835,12 +789,14 @@ export function Sidebar({ sessions, activeSession, onSwitch, onDelete, onSplit, 
               <button
                 onClick={() => setConfirmDelete(null)}
                 className="px-3 py-1.5 text-xs rounded-xl border border-pc-border-strong text-pc-text-secondary hover:bg-[var(--pc-hover)] transition-colors"
+                aria-label={t('sidebar.deleteCancel')}
               >
                 {t('sidebar.deleteCancel')}
               </button>
               <button
                 onClick={() => { onDelete(confirmDelete); setConfirmDelete(null); }}
                 className="px-3 py-1.5 text-xs rounded-xl bg-red-500/20 text-red-300 border border-red-500/20 hover:bg-red-500/30 transition-colors"
+                aria-label={t('sidebar.delete')}
               >
                 {t('sidebar.delete')}
               </button>

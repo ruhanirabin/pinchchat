@@ -313,6 +313,7 @@ export function Chat({ messages, isGenerating, isLoadingHistory, status, session
                       key={key}
                       onClick={() => onSend(t(key))}
                       className="text-left text-sm px-4 py-3 rounded-2xl border border-pc-border bg-pc-elevated/30 text-pc-text-secondary hover:bg-[var(--pc-hover)] hover:text-pc-text hover:border-[var(--pc-accent-dim)] transition-all duration-200 leading-snug"
+                      aria-label={t(key)}
                     >
                       {t(key)}
                     </button>
@@ -382,6 +383,7 @@ export function Chat({ messages, isGenerating, isLoadingHistory, status, session
                     setShowBookmarks(false);
                   }}
                   className="w-full text-left px-2 py-1.5 rounded-xl hover:bg-[var(--pc-hover)] text-xs text-pc-text-secondary truncate transition-colors"
+                  aria-label={`${t('chat.bookmarks')}: ${b.preview || '(empty)'}`}
                 >
                   <span className="text-amber-400 mr-1">★</span>
                   {b.preview || '(empty)'}

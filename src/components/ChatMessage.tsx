@@ -122,6 +122,7 @@ function CollapsibleContent({ content, isStreaming, children }: { content: strin
           <button
             onClick={() => setExpanded(false)}
             className="mt-2 flex items-center gap-1 text-xs text-pc-accent-light hover:text-pc-accent transition-colors"
+            aria-label={t('message.showLess')}
           >
             <ChevronDown size={12} className="rotate-180" />
             <span>{t('message.showLess')}</span>
@@ -140,6 +141,7 @@ function CollapsibleContent({ content, isStreaming, children }: { content: strin
       <button
         onClick={() => setExpanded(true)}
         className="relative mt-1 flex items-center gap-1 text-xs text-pc-accent-light hover:text-pc-accent transition-colors"
+        aria-label={t('message.showMore')}
       >
         <ChevronDown size={12} />
         <span>{t('message.showMore')}</span>

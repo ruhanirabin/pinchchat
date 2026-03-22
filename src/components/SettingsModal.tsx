@@ -163,6 +163,8 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                     ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
                     : 'border-pc-border text-pc-text-muted hover:bg-[var(--pc-hover)]'
                 }`}
+                aria-label={tTab.label}
+                aria-selected={tab === tTab.id}
               >
                 {tTab.label}
               </button>
@@ -183,6 +185,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                         key={opt.value}
                         onClick={() => setTheme(opt.value)}
                         aria-pressed={active}
+                        aria-label={t(opt.labelKey)}
                         className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl border text-xs transition-all ${
                           active
                             ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
@@ -227,6 +230,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                     key={loc}
                     onClick={() => setLocale(loc)}
                     aria-pressed={currentLocale === loc}
+                    aria-label={localeLabels[loc] || loc.toUpperCase()}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs transition-all ${
                       currentLocale === loc
                         ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light font-medium'
@@ -256,6 +260,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                       key={opt.value}
                       onClick={() => setUiFont(opt.value)}
                       aria-pressed={uiFont === opt.value}
+                      aria-label={`${t('settings.fontUi')}: ${opt.label}`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs transition-all ${
                         uiFont === opt.value
                           ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
@@ -281,6 +286,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                       key={opt.value}
                       onClick={() => setMonoFont(opt.value)}
                       aria-pressed={monoFont === opt.value}
+                      aria-label={`${t('settings.fontMono')}: ${opt.label}`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs transition-all ${
                         monoFont === opt.value
                           ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
@@ -305,6 +311,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                       key={size}
                       onClick={() => setUiFontSize(size)}
                       aria-pressed={uiFontSize === size}
+                      aria-label={`${t('settings.fontSize')}: ${size}px`}
                       className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
                         uiFontSize === size
                           ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
@@ -325,6 +332,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                       key={size}
                       onClick={() => setMonoFontSize(size)}
                       aria-pressed={monoFontSize === size}
+                      aria-label={`${t('settings.fontMonoSize')}: ${size}px`}
                       className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
                         monoFontSize === size
                           ? 'border-pc-accent/40 bg-pc-accent/10 text-pc-accent-light'
@@ -358,6 +366,7 @@ export function SettingsModal({ open, onClose, soundEnabled, onToggleSound }: Pr
                 <button
                   onClick={toggleSendShortcut}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-pc-border text-xs text-pc-text-secondary hover:bg-[var(--pc-hover)] transition-colors"
+                  aria-label={t('settings.sendShortcut')}
                 >
                   {sendOnEnter
                     ? t('settings.sendEnter')
